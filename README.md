@@ -20,7 +20,7 @@ Setting up the hardware
     - Using CoolTerm, select the usbmodem Port in "Options" > "Serial Port Options"
     - Click "Connect"
     - For the receiver type the commands:
-         - device=N (N' must be a unique integer)
+         - device=N (’N’ must be a unique integer)
          - channel=N (default is probably ok)
     - For the transmitter type the commands:
          - device=N (different than transmitter)
@@ -33,8 +33,8 @@ Using the block
 
 1. Clone the block into your blocks folder
 2. Plug the usb receiver and check the port it's connected.
-3. Create a new project with Tinderbox, or drag the src/ subfolder to your project.
-4. Instantiate a Wax3Receiver for every receiver you have (usually one) and call setup with the port address. You can also just write a part of it ("/dev/tty.usbmodem") and it will connect to the first device with that address.
+3. Create a new project with Tinderbox, or drag the src/ and include/ subfolders to your project.
+4. Instantiate a Wax3Receiver for every receiver you have (usually one) and call setup with the port address.
 5. Instantiate an Accelerometer for every transmitter with different ID that you have, and call setup passing the ID of the device, and the receiver as its data source.
 6. On every frame, call update() in all your accelerometers and process their new data with getNumNewReadings(). See example for details.
 
