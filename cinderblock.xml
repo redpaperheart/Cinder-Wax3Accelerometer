@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<cinder>
+  <block
+  	name="Cinder-Wax3Accelerometer"
+  	id="com.redpaperheart.wax3"
+  	author="Red Paper Heart"
+    git="https://github.com/redpaperheart/Cinder-Wax3Accelerometer"
+  	summary="Cinder block to access accelerometer data."
+  	>
+  	<supports os="macosx" />
+    <includePath>include</includePath>
+    <header>include/AccelDataSource.h</header>
+    <header>include/Accelerometer.h</header>
+    <header>include/Wax3Receiver.h</header>
+    <source>src/Accelerometer.cpp</source>
+    <source>src/Wax3Receiver.cpp</source>
+  </block>  
+</cinder>
