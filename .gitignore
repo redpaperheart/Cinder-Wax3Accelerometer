@@ -1,13 +1,7 @@
-# Compiled Object files
-*.slo
-*.lo
-*.o
+# Xcode
+build/
+xcuserdata/
 
-# Compiled Dynamic libraries
-*.so
-*.dylib
-
-# Compiled Static libraries
-*.lai
-*.la
-*.a
+# OS X 
+.DS_Store
+profile
