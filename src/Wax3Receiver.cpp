@@ -27,6 +27,7 @@
  */
 
 #include "Wax3Receiver.h"
+#include "cinder/Serial.h"
 
 /* -------------------------------------------------------------------------------------------------- */
 #pragma mark AccelDataSource protocol
@@ -34,16 +35,13 @@
 
 bool Wax3Receiver::hasNewReadings(ushort id)
 {
-    if(mBuffers.count(id) == 1){
-        return mBuffers[id]->isNotEmpty();
-    }
-    else return false;
+    return mBuffers.count(id) == 1 && mBuffers.at(id)->isNotEmpty();
 }
 
 Vec3f Wax3Receiver::getNextReading(ushort id)
 {
     WaxSample sample;
-    mBuffers[id]->popBack(&sample);
+    mBuffers.at(id)->popBack(&sample);
     return Vec3f(sample.x/256.0f, sample.y/256.0f, sample.z/256.0f);
 }
 
@@ -54,24 +52,31 @@ Vec3f Wax3Receiver::getNextReading(ushort id)
 
 int Wax3Receiver::setup(string portName)
 {
-    // TO IMPLEMENT - find normal and bluetooth ports with incomplete name
+    // find a port that matches with the name
+    Serial::Device device = Serial::findDeviceByNameContains(portName);
+    
+    if(device.getName() != "") {
+        mPortName = "/dev/" + device.getName();
+        bDebug = false;
 
-    mPortName = portName;
-    bDebug = false;
-
-    /* Open the serial port */
-    mFd = -1;
-    mFd = openport(portName.c_str(), 1);   // (initString != NULL)
-    if (mFd < 0)
-    {
-        fprintf(stderr, "ERROR: Port not open.\n");
-        return 2;
+        /* Open the serial port */
+        mFd = -1;
+        mFd = openport(mPortName.c_str(), 1);   // (initString != NULL)
+        if (mFd < 0)
+        {
+            fprintf(stderr, "ERROR: Port not open.\n");
+            return 2;
+        }
+        
+        /* Start Input thread */
+        mThread = shared_ptr<thread>( new thread( bind( &Wax3Receiver::readPackets, this ) ) );
+        
+        return 1;
     }
-    
-    /* Start Input thread */
-    mThread = shared_ptr<thread>( new thread( bind( &Wax3Receiver::readPackets, this ) ) );
-    
-    return 1;
+    else {
+        app::console() << "ERROR: can't find a reciever matching with port " << portName << std::endl;
+        return 0;
+    }
 }
 
 Wax3Receiver::~Wax3Receiver()
@@ -161,10 +166,9 @@ int Wax3Receiver::readPackets()
                 for (int i = 0; i < waxPacket->sampleCount; i++)
                 {
                     if(mBuffers.count(waxPacket->deviceId) == 0){ // can't we do this automatically? maybe with default allocator?
-                        mBuffers[waxPacket->deviceId] = new ConcurrentCircularBuffer<WaxSample>( 250 );
-   
+                        mBuffers[waxPacket->deviceId] = new ConcurrentCircularBuffer<WaxSample>( 50 );
                     }
-                    mBuffers[waxPacket->deviceId]->tryPushFront(waxPacket->samples[i]);
+                    mBuffers.at(waxPacket->deviceId)->tryPushFront(waxPacket->samples[i]);
                 }
             }
         }

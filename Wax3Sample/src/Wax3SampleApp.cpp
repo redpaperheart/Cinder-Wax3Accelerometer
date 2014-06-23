@@ -22,8 +22,9 @@ class Wax3SampleApp : public AppNative {
 
 void Wax3SampleApp::setup()
 {
-    // Initialize Wax3 receiver with the port address
-    mWax3.setup("/dev/tty.usbmodemfa131");
+    // Initialize Wax3 receiver with its port name
+    // (type this in terminal to find the connected devices: ls /dev/tty.*)
+    mWax3.setup("tty.usbmodem1d111");
     mWax3.setDebug(false);
     
     // Initialize accelerometer with the Wax3 receiver as data source
@@ -39,7 +40,8 @@ void Wax3SampleApp::update()
     mAccel.update();
     
     // Process new data
-    for (int i=0; i<mAccel.getNumNewReadings(); i++) {
+    int newReadings = mAccel.getNumNewReadings();
+    for (int i=0; i<newReadings; i++) {
         float acc = mAccel.getAccelMagnitude(i);
         if(acc > 15.0 && mFlash == 0.0f) mFlash = 1.0f;
     }

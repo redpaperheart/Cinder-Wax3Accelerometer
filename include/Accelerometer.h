@@ -73,6 +73,7 @@ protected:
     bool        mSmooth;
     float       mSmoothFactor;
     int         mNewReadings;
+    int         mHistoryLength;
     
     boost::circular_buffer<float>* mAccelMags;
     boost::circular_buffer<Vec3f>* mAccels;

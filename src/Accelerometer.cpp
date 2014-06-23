@@ -44,14 +44,11 @@ void Accelerometer::setup(unsigned short id, AccelDataSource* dataSource, int hi
 {
     mId = id;
     mDataSource = dataSource;
+    mHistoryLength = historyLength;
     
     mAccels     = new boost::circular_buffer<Vec3f>(historyLength);
     mAccelMags  = new boost::circular_buffer<float>(historyLength);    
 }
-
-
-const static float kExistingValueWeight = 0.8f;
-const static float kNewValueWeight = 1.0f-kExistingValueWeight;
 
 void Accelerometer::update()
 {
@@ -77,6 +74,10 @@ void Accelerometer::update()
         }
         mMaxAccelMag = max(mMaxAccelMag, mAccelMags->front());
     }
+    
+    // sometimes after sleeping for a while we get a lot of readings in the same packet
+    // we can't let numNewReadings be higher than the size of the circular buffers
+    if (mNewReadings > mHistoryLength) mNewReadings = mHistoryLength;
 }
 
 float Accelerometer::getPitch()

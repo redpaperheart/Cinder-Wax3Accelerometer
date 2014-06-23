@@ -1,0 +1,41 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<key>IDESourceControlProjectFavoriteDictionaryKey</key>
+	<false/>
+	<key>IDESourceControlProjectIdentifier</key>
+	<string>968559C9-D2F8-4C3B-96E7-0515AFF010C9</string>
+	<key>IDESourceControlProjectName</key>
+	<string>Wax3Sample</string>
+	<key>IDESourceControlProjectOriginsDictionary</key>
+	<dict>
+		<key>4E7F4F08-C921-4993-AE9C-06F89141691C</key>
+		<string>https://github.com/redpaperheart/Cinder-Wax3Accelerometer</string>
+	</dict>
+	<key>IDESourceControlProjectPath</key>
+	<string>Wax3Sample/xcode/Wax3Sample.xcodeproj/project.xcworkspace</string>
+	<key>IDESourceControlProjectRelativeInstallPathDictionary</key>
+	<dict>
+		<key>4E7F4F08-C921-4993-AE9C-06F89141691C</key>
+		<string>../../../..</string>
+	</dict>
+	<key>IDESourceControlProjectURL</key>
+	<string>git://github.com/cinder/Cinder.git</string>
+	<key>IDESourceControlProjectVersion</key>
+	<integer>110</integer>
+	<key>IDESourceControlProjectWCCIdentifier</key>
+	<string>4E7F4F08-C921-4993-AE9C-06F89141691C</string>
+	<key>IDESourceControlProjectWCConfigurations</key>
+	<array>
+		<dict>
+			<key>IDESourceControlRepositoryExtensionIdentifierKey</key>
+			<string>public.vcs.git</string>
+			<key>IDESourceControlWCCIdentifierKey</key>
+			<string>4E7F4F08-C921-4993-AE9C-06F89141691C</string>
+			<key>IDESourceControlWCCName</key>
+			<string>Cinder-Wax3Accelerometer</string>
+		</dict>
+	</array>
+</dict>
+</plist>
