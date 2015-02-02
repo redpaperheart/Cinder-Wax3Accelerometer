@@ -1,7 +1,7 @@
 /*
  Created by Adrià Navarro at Red Paper Heart
  
- Copyright (c) 2012, Red Paper Heart
+ Copyright (c) 2015, Red Paper Heart
  All rights reserved.
  
  This code is designed for use with the Cinder C++ library, http://libcinder.org
@@ -47,73 +47,66 @@ Vec3f Wax3Receiver::getNextReading(ushort id)
 
 
 /* -------------------------------------------------------------------------------------------------- */
-#pragma mark setup and port opening
+#pragma mark constructors and setup
 /* -------------------------------------------------------------------------------------------------- */
 
-int Wax3Receiver::setup(string portName)
+Wax3Receiver::Wax3Receiver()
 {
-    // find a port that matches with the name
-    Serial::Device device = Serial::findDeviceByNameContains(portName);
-    
-    if(device.getName() != "") {
-        mPortName = "/dev/" + device.getName();
-        bDebug = false;
+    bConnected = false;
+    bCloseThread = false;
+    bDebug = false;
+}
 
-        /* Open the serial port */
-        mFd = -1;
-        mFd = openport(mPortName.c_str(), 1);   // (initString != NULL)
-        if (mFd < 0)
-        {
-            fprintf(stderr, "ERROR: Port not open.\n");
-            return 2;
-        }
-        
-        /* Start Input thread */
-        mThread = shared_ptr<thread>( new thread( bind( &Wax3Receiver::readPackets, this ) ) );
-        
-        return 1;
-    }
-    else {
-        app::console() << "ERROR: can't find a reciever matching with port " << portName << std::endl;
-        return 0;
-    }
+Wax3Receiver::Wax3Receiver(std::string portName) : Wax3Receiver()
+{
+    setup(portName);
 }
 
 Wax3Receiver::~Wax3Receiver()
 {
-    if(mThread) mThread->join();
+    closeThread();
 }
 
-/* Open a serial port */
-int Wax3Receiver::openport(const char* infile, char writeable)
+/* Close input and thread */
+bool Wax3Receiver::stop()
 {
-    int fd = fileno(stdin);
-    if (infile != NULL && infile[0] != '\0' && !(infile[0] == '-' && infile[1] == '\0'))
+    closeThread();
+    bConnected = false;
+    return true;
+}
+
+bool Wax3Receiver::closeThread()
+{
+    bCloseThread = true;
+    if(mThread && mThread->joinable())
     {
-        
-        int flags = O_NOCTTY | O_NDELAY;
-        flags |= (writeable) ? O_RDWR : O_RDONLY;
-        
-        fd = open(infile, flags);
-        
-        if (fd < 0)
-        {
-            fprintf(stderr, "ERROR: Problem opening input: '%s'\n", infile);
-            return -1;
-        }
-        
-        /* Set serial port parameters (OS-specific) */
-        fcntl(fd, F_SETFL, 0);    // Clear all descriptor flags
-        
-        /* Set the port options */
-        struct termios options;
-        tcgetattr(fd, &options);
-        options.c_cflag = (options.c_cflag | CLOCAL | CREAD | CS8) & ~(PARENB | CSTOPB | CSIZE | CRTSCTS);
-        options.c_lflag &= ~(ICANON | ECHO | ISIG); /* Enable data to be processed as raw input */
-        tcsetattr(fd, TCSANOW, &options);
-    
+        mThread->join();
+        return true;
     }
-    return fd;
+    return false;
+}
+
+bool Wax3Receiver::setup(string portName)
+{
+    bConnected = false;
+    
+    for( auto device : Serial::getDevices()) app::console() << device.getName() << ", " << device.getPath() << std::endl;
+    try {
+        Serial::Device device = Serial::findDeviceByNameContains(portName);
+        mSerial = Serial(device, 115200);
+        app::console() << "Receiver sucessfully connected to " << portName << std::endl;
+    }
+    catch(SerialExc e) {
+        app::console() << "Receiver unable to connect to " << portName << ": " << e.what() << std::endl;
+        bConnected = false;
+        return false;
+    }
+    
+    /* Start Input thread */
+    closeThread();
+    mThread = shared_ptr<thread>( new thread( bind( &Wax3Receiver::readPackets, this ) ) );
+    bConnected = true;
+    return true;
 }
 
 /* -------------------------------------------------------------------------------------------------- */
@@ -123,69 +116,54 @@ int Wax3Receiver::openport(const char* infile, char writeable)
 int Wax3Receiver::readPackets()
 {
     ci::ThreadSetup threadSetup;
-
+    bCloseThread = false;
+    
     static char buffer[BUFFER_SIZE];
     
     /* Read packets */
     
-    char text = 1;
-    
-    while (true)
+    while (!bCloseThread)
     {
-        size_t len = 0;
-        
-        /* Read data */
-        if (text)
+        if(mSerial.getNumBytesAvailable() > 0)
         {
-            len = lineread(mFd, buffer, BUFFER_SIZE);
-            if (len == (size_t)-1)
+            /* Read data */
+            size_t bytesRead = lineread(buffer, BUFFER_SIZE);
+            
+            if (bytesRead == (size_t) - 1)
             {
-                text = 0;
+                bytesRead = slipread(buffer, BUFFER_SIZE);
             }
-            if (len == 0) { break; }
-        }
-        if (!text)
-        {
-            len = slipread(mFd, buffer, BUFFER_SIZE);
-            if (len == 0) { break; }
-        }
-        
-        
-        /* Get time now */
-        unsigned long long now = TicksNow();
-        
-        /* If it appears to be a binary WAX packet... */
-        if (len > 1 && buffer[0] == 0x12 && (buffer[1] == 0x78 || buffer[1] == 0x58))
-        {
-            WaxPacket *waxPacket = parseWaxPacket(buffer, len, now);
-            if (waxPacket != NULL)
+            if (bytesRead == 0) { break; }
+            
+            
+            // Get time now
+            unsigned long long now = ticksNow();
+            
+            // If it appears to be a binary WAX packet...
+            if (bytesRead > 1 && buffer[0] == 0x12 && (buffer[1] == 0x78 || buffer[1] == 0x58))
             {
-                if(bDebug) printWax(waxPacket, 1);
-                
-                // Save samples in concurrent buffer
-                for (int i = 0; i < waxPacket->sampleCount; i++)
+                WaxPacket *waxPacket = parseWaxPacket(buffer, bytesRead, now);
+                if (waxPacket != NULL)
                 {
-                    if(mBuffers.count(waxPacket->deviceId) == 0){ // can't we do this automatically? maybe with default allocator?
-                        mBuffers[waxPacket->deviceId] = new ConcurrentCircularBuffer<WaxSample>( 50 );
+                    if(bDebug) printWax(waxPacket, 1);
+                    
+                    // Save samples in concurrent buffer
+                    for (int i = 0; i < waxPacket->sampleCount; i++)
+                    {
+                        if(mBuffers.count(waxPacket->deviceId) == 0){ // can't we do this automatically? maybe with default allocator?
+                            mBuffers[waxPacket->deviceId] = new ConcurrentCircularBuffer<WaxSample>( 50 );
+                        }
+                        mBuffers.at(waxPacket->deviceId)->tryPushFront(waxPacket->samples[i]);
                     }
-                    mBuffers.at(waxPacket->deviceId)->tryPushFront(waxPacket->samples[i]);
                 }
             }
         }
-        //std::thread::sleep( boost::posix_time::milliseconds(1) );
-   
+        else {
+            std::this_thread::sleep_for(std::chrono::milliseconds(1)); // need this or cpu consumption goes up to 115%
+        }
     }
     return 1;
 }
-
-/* Close input and thread */
-int Wax3Receiver::stop()
-{
-    if (mFd != -1 && mFd != fileno(stdin)) { close(mFd); }
-    //return (s != SOCKET_ERROR) ? 0 : 1;
-    return 1;
-}
-
 
 /* -------------------------------------------------------------------------------------------------- */
 #pragma mark packet parsing
@@ -197,57 +175,77 @@ int Wax3Receiver::stop()
 #define SLIP_ESC_ESC 0xDD                   /* Escaped substitution for the ESC data byte */
 
 /* Read a line from the device */
-size_t Wax3Receiver::lineread(int fd, void *inBuffer, size_t len)
+size_t Wax3Receiver::lineread(void *inBuffer, size_t len)
 {
     unsigned char *p = (unsigned char *)inBuffer;
-    size_t received = 0;
     unsigned char c;
+    size_t bytesRead = 0;
     
-    if (fd < 0 || inBuffer == NULL) { return 0; }
+    if (inBuffer == NULL) { return 0; }
     *p = '\0';
-    for (;;)
+    while(!bCloseThread)
     {
         c = '\0';
         
-        if (read(fd, &c, 1) <= 0) { return received; }
+        try{
+            c = mSerial.readByte();
+        }
+        catch(...) {
+            return bytesRead;
+        }
         
-        if (c == 0xC0) { return (size_t)-1; }    /* A SLIP_END means the reader should switch to slip reading. */
+        if (c == SLIP_END) { /* A SLIP_END means the reader should switch to slip reading. */
+            return (size_t)-1;
+        }
         if (c == '\r' || c == '\n')
         {
-            if (received) { return received; }
+            if (bytesRead) return bytesRead;
         }
         else
         {
-            if (received < len - 1) { p[received++] = (char)c; p[received] = 0; }
+            if (bytesRead < len - 1) {
+                p[bytesRead++] = (char)c;
+                p[bytesRead] = 0;
+            }
         }
     }
+    return 0;
 }
 
-
 /* Read a SLIP-encoded packet from the device */
-size_t Wax3Receiver::slipread(int fd, void *inBuffer, size_t len)
+size_t Wax3Receiver::slipread(void *inBuffer, size_t len)
 {
     unsigned char *p = (unsigned char *)inBuffer;
-    size_t received = 0;
     unsigned char c = '\0';
+    size_t bytesRead = 0;
     
-    if (fd < 0 || inBuffer == NULL) { return 0; }
-    for (;;)
+    if (inBuffer == NULL) return 0;
+    
+    while(!bCloseThread)
     {
         c = '\0';
         
-        if (read(fd, &c, 1) <= 0) { return received; }
-        
+        try{
+            c = mSerial.readByte();
+        }
+        catch(...) {
+            return bytesRead;
+        }
         switch (c)
         {
             case SLIP_END:
-                if (received) { return received; }
+                if (bytesRead) return bytesRead;
                 break;
                 
             case SLIP_ESC:
                 c = '\0';
                 
-                if (read(fd, &c, 1) <= 0) { return received; }
+                try{
+                    c = mSerial.readByte();
+                }
+                catch(...) {
+                    return bytesRead;
+                }
                 
                 switch (c){
                     case SLIP_ESC_END:
@@ -262,12 +260,14 @@ size_t Wax3Receiver::slipread(int fd, void *inBuffer, size_t len)
                 }
                 
                 /* ... fall through to default case with our replaced character ... */
-                
             default:
-                if (received < len) { p[received++] = c; }
+                if (bytesRead < len) {
+                    p[bytesRead++] = c;
+                }
                 break;
         }
     }
+    return 0;
 }
 
 WaxPacket* Wax3Receiver::parseWaxPacket(const void *inputBuffer, size_t len, unsigned long long now)
@@ -279,7 +279,7 @@ WaxPacket* Wax3Receiver::parseWaxPacket(const void *inputBuffer, size_t len, uns
     
     if (len >= 12 && buffer[0] == 0x12 && buffer[1] == 0x78)
     {
-      
+        
         unsigned short deviceId = buffer[2] | ((unsigned short)buffer[3] << 8);
         unsigned char format = buffer[7];
         unsigned short sequenceId = buffer[8] | ((unsigned short)buffer[9] << 8);
@@ -372,7 +372,7 @@ void Wax3Receiver::printWax(WaxPacket *waxPacket, int timeformat)
 
 
 /* Returns the number of milliseconds since the epoch */
-unsigned long long Wax3Receiver::TicksNow(void)
+unsigned long long Wax3Receiver::ticksNow(void)
 {
     struct timeb tp;
     ftime(&tp);
@@ -383,7 +383,7 @@ unsigned long long Wax3Receiver::TicksNow(void)
 const char* Wax3Receiver::timestamp(unsigned long long ticks)
 {
     static char output[] = "YYYY-MM-DD HH:MM:SS.fff";
-	output[0] = '\0';
+    output[0] = '\0';
     
     struct tm *today;
     struct timeb tp = {0};

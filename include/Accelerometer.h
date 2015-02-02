@@ -1,7 +1,7 @@
 /*
  Created by Adrià Navarro at Red Paper Heart
  
- Copyright (c) 2012, Red Paper Heart
+ Copyright (c) 2015, Red Paper Heart
  All rights reserved.
  
  This code is designed for use with the Cinder C++ library, http://libcinder.org
@@ -35,37 +35,39 @@
 using namespace ci;
 using namespace std;
 
-const static int kAccelHistoryLength = 120;
+typedef boost::circular_buffer<float>* CircBuffer; // to clean up
 
 class Accelerometer
 {
-    
 public:
     Accelerometer();
     ~Accelerometer(){};
     
     void        setup(ushort id, AccelDataSource* dataSource, int historyLength = 120);
     void        update();
-    void        setSmooth(bool s, float f = 0.2f)   {mSmooth = s; mSmoothFactor = f;}
+    void        setSmooth(bool s, float f = 0.5f)   {mSmooth = s; mSmoothFactor = f;}
     
     bool        isActive()                          {return mActive;}
     bool        hasNewReadings()                    {return mNewReadings>0;}
     int         getNumNewReadings()                 {return mNewReadings;}
     ushort      getId()                             {return mId;}
-
+    
     Vec3f       getAccel()                          {return mAccels->front();}
     Vec3f       getAccel(int i)                     {return mAccels->at(i);}
     Vec3f*      getAccelHistory()                   {return mAccels->linearize();}
     float       getAccelMagnitude()                 {return mAccelMags->front();}
     float       getAccelMagnitude(int i)            {return mAccelMags->at(i);}
     float*      getAccelMagHistory()                {return mAccelMags->linearize();}
+    CircBuffer  getAccelMagHistoryBuffer()          {return mAccelMags;}
+    
     Vec3f       getMaxAccel()                       {return mMaxAccel;}
     float       getMaxAccelMagnitude()              {return mMaxAccelMag;}
     int         getHistoryLength()                  {return mAccels->size();}
     
     float       getPitch(); // rotation in x axis in degrees
     float       getRoll(); // rotation in z axis in degrees
-
+    
+    bool        mEnabled;
     
 protected:
     ushort      mId;

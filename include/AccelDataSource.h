@@ -7,7 +7,7 @@
 /*
  Created by Adrià Navarro at Red Paper Heart
  
- Copyright (c) 2012, Red Paper Heart
+ Copyright (c) 2015, Red Paper Heart
  All rights reserved.
  
  This code is designed for use with the Cinder C++ library, http://libcinder.org
@@ -40,6 +40,7 @@ using namespace ci;
 
 class AccelDataSource{
 public:
+    virtual bool  isConnected() = 0;
     virtual bool  hasNewReadings(ushort id) = 0;
     virtual Vec3f getNextReading(ushort id) = 0;
 };

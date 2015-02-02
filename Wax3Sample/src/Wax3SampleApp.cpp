@@ -24,11 +24,12 @@ void Wax3SampleApp::setup()
 {
     // Initialize Wax3 receiver with its port name
     // (type this in terminal to find the connected devices: ls /dev/tty.*)
-    mWax3.setup("tty.usbmodem1d111");
+    mWax3.setup("tty.usbmodem");
     mWax3.setDebug(false);
     
     // Initialize accelerometer with the Wax3 receiver as data source
-    mAccel.setup(100, &mWax3);
+    // make sure this ID is the device ID of the emitter, as set in CoolTerm
+    mAccel.setup(5, &mWax3);
     
     mFlash = 0.0f;
 }
@@ -39,11 +40,11 @@ void Wax3SampleApp::update()
     // Update the accelerometer to obtain new data from its source
     mAccel.update();
     
-    // Process new data
+    // Process new data to detect spikes
     int newReadings = mAccel.getNumNewReadings();
     for (int i=0; i<newReadings; i++) {
         float acc = mAccel.getAccelMagnitude(i);
-        if(acc > 15.0 && mFlash == 0.0f) mFlash = 1.0f;
+        if (acc > 15.0 && mFlash == 0.0f) mFlash = 1.0f;
     }
     
     if(mFlash > 0.0f) mFlash -= 0.01f;
@@ -53,9 +54,10 @@ void Wax3SampleApp::update()
 void Wax3SampleApp::draw()
 {
 	gl::clear(Color::gray(mFlash));
+    gl::enableAlphaBlending();
 
-    if(mAccel.isActive()){
-        
+    if (mAccel.isActive()) {
+    
         // graph acceleration history per axis
         float scaleX = 6;
         float scaleY = 10;
@@ -91,6 +93,11 @@ void Wax3SampleApp::draw()
         gl::disableDepthRead();
         gl::disableDepthWrite();
     }
+    else {
+        gl::drawStringCentered("Wax3 not found. Check usb port name and receiver ID", getWindowCenter());
+    }
+    
+    gl::drawString(to_string((int)getAverageFps()), Vec2f(20, 20));
 }
 
 CINDER_APP_NATIVE( Wax3SampleApp, RendererGl )

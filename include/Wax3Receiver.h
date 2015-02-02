@@ -1,10 +1,10 @@
-/* 
+/*
  Wax3Receiver
  Class to obtain data from the Wax3 device via serial port.
  
  Code based on the waxrec application:
  https://code.google.com/p/openmovement/source/browse/trunk/Software/WAX3/waxrec
-
+ 
  For more information read developer guide:
  http://openmovement.googlecode.com/svn/trunk/Software/WAX3/WAX%20Developer%20Guide.pdf
  */
@@ -12,7 +12,7 @@
 /*
  Created by Adrià Navarro at Red Paper Heart
  
- Copyright (c) 2012, Red Paper Heart
+ Copyright (c) 2015, Red Paper Heart
  All rights reserved.
  
  This code is designed for use with the Cinder C++ library, http://libcinder.org
@@ -36,28 +36,19 @@
  NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
  POSSIBILITY OF SUCH DAMAGE.
  */
- 
+
 #pragma once
 
-// Cinder stuff
 #include "cinder/app/App.h"
 #include "cinder/Thread.h"
 #include "cinder/ConcurrentCircularBuffer.h"
-
-// Sockets
-#include <termios.h>
-#include <fcntl.h>
+#include "cinder/Serial.h"
 #include <sys/timeb.h>
 
-// USB IDs
-#define DEFAULT_VID 0x04D8           /* USB Vendor ID  */
-#define DEFAULT_PID 0x000A           /* USB Product ID */
-
-// Data Source
 #include "AccelDataSource.h"
-#define BUFFER_SIZE 0xffff
 
 // Wax Structures
+#define BUFFER_SIZE 0xffff
 #define MAX_SAMPLES 32
 
 typedef struct
@@ -83,43 +74,40 @@ using namespace ci;
 
 class Wax3Receiver : public AccelDataSource {
 public:
-    Wax3Receiver() {};
+    Wax3Receiver();
+    Wax3Receiver(string portName);
     ~Wax3Receiver();
     
     // Start and stop
-    int setup(string portName);
-    int stop();
-    void setDebug(bool b) { bDebug = b; }
+    bool    setup(string portName);
+    bool    stop();
+    void    setDebug(bool b) { bDebug = b; }
     
     // AccelDataSource protocol
+    bool    isConnected()   { return bConnected; }
     bool    hasNewReadings(ushort id);
     Vec3f   getNextReading(ushort id);
     
-
 private:
-    // start functions
-    int         openport(const char* infile, char writeable);
-
     // input thread parsing
-    int         readPackets();
-    size_t      slipread(int fd, void *inBuffer, size_t len);
-    size_t      lineread(int fd, void *inBuffer, size_t len);
-    WaxPacket*  parseWaxPacket(const void *inputBuffer, size_t len, unsigned long long now);
+    int                 readPackets();
+    size_t              slipread(void *inBuffer, size_t len);
+    size_t              lineread(void *inBuffer, size_t len);
+    WaxPacket*          parseWaxPacket(const void *inputBuffer, size_t len, unsigned long long now);
     
     // utils
-    void        printWax(WaxPacket *waxPacket, int timeformat);
-    const char* timestamp(unsigned long long ticks);
-    unsigned long long TicksNow(void);
-
+    bool                closeThread();
+    void                printWax(WaxPacket *waxPacket, int timeformat);
+    const char*         timestamp(unsigned long long ticks);
+    unsigned long long  ticksNow();
+    
     // members
-    bool        bDebug;
-    int         mFd;
-    const char* mInfile;
-    string      mPortName;
-    shared_ptr<thread> mThread;
+    bool                bConnected;
+    bool                bCloseThread;
+    bool                bDebug;
+    Serial              mSerial;
+    shared_ptr<thread>  mThread;
     
     map<ushort, ConcurrentCircularBuffer<WaxSample>* > mBuffers;
-
-
 };
 

@@ -1,7 +1,7 @@
 /*
  Created by Adrià Navarro at Red Paper Heart
  
- Copyright (c) 2012, Red Paper Heart
+ Copyright (c) 2015, Red Paper Heart
  All rights reserved.
  
  This code is designed for use with the Cinder C++ library, http://libcinder.org
@@ -31,53 +31,66 @@
 
 Accelerometer::Accelerometer()
 {
+    mEnabled = true;
     mActive = false;
     mSmooth  = false;
     mSmoothFactor = 0.8;
     mNewReadings = 0;
-
+    
     mMaxAccel = Vec3f::zero();
     mMaxAccelMag = 0;
+    mHistoryLength = 120;
+    
+    mDataSource = NULL;
+    mAccels     = new boost::circular_buffer<Vec3f>(mHistoryLength);
+    mAccelMags  = new boost::circular_buffer<float>(mHistoryLength);
 }
 
 void Accelerometer::setup(unsigned short id, AccelDataSource* dataSource, int historyLength)
 {
     mId = id;
+    //    if (mDataSource) delete mDataSource;
     mDataSource = dataSource;
-    mHistoryLength = historyLength;
     
-    mAccels     = new boost::circular_buffer<Vec3f>(historyLength);
-    mAccelMags  = new boost::circular_buffer<float>(historyLength);    
+    if (historyLength != mHistoryLength) {
+        mHistoryLength = historyLength;
+        mAccels->set_capacity(mHistoryLength);
+        mAccelMags->set_capacity(mHistoryLength);
+    }
 }
 
 void Accelerometer::update()
 {
     mNewReadings = 0;
-
-    // Obtain new data from dataSource
-    while (mDataSource->hasNewReadings(mId)) {
-        mActive = true;
-        mNewReadings ++;
-        
-        // Update accel buffer
-        Vec3f newAccel = mDataSource->getNextReading(mId);
-        
-        if(mSmooth && !mAccels->empty()){
-            newAccel = newAccel * mSmoothFactor + (1 - mSmoothFactor) * mAccels->front();
-        }
-        mAccels->push_front(newAccel);
-        mAccelMags->push_front(newAccel.length());  // try lengthSquared?
-        
-        // Save max and min for every component
-        for(int i=0; i<3; i++){
-            mMaxAccel[i] = max(mMaxAccel[i], newAccel[i]);
-        }
-        mMaxAccelMag = max(mMaxAccelMag, mAccelMags->front());
-    }
     
-    // sometimes after sleeping for a while we get a lot of readings in the same packet
-    // we can't let numNewReadings be higher than the size of the circular buffers
-    if (mNewReadings > mHistoryLength) mNewReadings = mHistoryLength;
+    if(!mEnabled) return;
+    
+    if(mDataSource && mDataSource->isConnected()) {
+        // Obtain new data from dataSource
+        while (mDataSource->hasNewReadings(mId)) {
+            mActive = true;
+            mNewReadings ++;
+            
+            // Update accel buffer
+            Vec3f newAccel = mDataSource->getNextReading(mId);
+            
+            if(mSmooth && !mAccels->empty()){
+                newAccel = newAccel * mSmoothFactor + (1 - mSmoothFactor) * mAccels->front();
+            }
+            mAccels->push_front(newAccel);
+            mAccelMags->push_front(newAccel.length());  // try lengthSquared?
+            
+            // Save max and min for every component
+            for(int i=0; i<3; i++){
+                mMaxAccel[i] = max(mMaxAccel[i], newAccel[i]);
+            }
+            mMaxAccelMag = max(mMaxAccelMag, mAccelMags->front());
+        }
+        
+        // sometimes after sleeping for a while we get a lot of readings in the same packet
+        // we can't let numNewReadings be higher than the size of the circular buffers
+        if (mNewReadings > mHistoryLength) mNewReadings = mHistoryLength;
+    }
 }
 
 float Accelerometer::getPitch()
