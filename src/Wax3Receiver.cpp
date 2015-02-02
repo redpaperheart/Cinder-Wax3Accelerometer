@@ -159,7 +159,7 @@ int Wax3Receiver::readPackets()
             }
         }
         else {
-            std::this_thread::sleep_for(std::chrono::milliseconds(1)); // need this or cpu consumption goes up to 115%
+            std::this_thread::sleep_for(std::chrono::milliseconds(10)); // need this or cpu consumption goes up to 115%
         }
     }
     return 1;
