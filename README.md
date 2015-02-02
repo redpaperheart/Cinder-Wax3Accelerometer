@@ -17,7 +17,7 @@ Setting up the hardware
 1. Setup at least one device as transmitter and one as receiver. This is done by updating the firmware on a real Windows machine. VMWare is not supported. See the developer guide or video for instructions.
 
 2. Specify the settings for every device with [CoolTerm](http://freeware.the-meiers.org/) (mac) or another serial communication app.
-    - Using CoolTerm, select the usbmodem Port in "Options" > "Serial Port Options"
+    - Using CoolTerm, select the usbmodem Port in "Options" > "Serial Port Options" and set the baudrate to 115200
     - Click "Connect"
     - For the receiver type the commands:
          - device=N (’N’ must be a unique integer)
