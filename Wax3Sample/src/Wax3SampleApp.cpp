@@ -1,4 +1,5 @@
 #include "cinder/app/AppNative.h"
+#include "cinder/app/RendererGl.h"
 #include "cinder/gl/gl.h"
 #include "cinder/Utilities.h"
 
@@ -77,21 +78,23 @@ void Wax3SampleApp::draw()
             green.lineTo(i * scaleX, 250 - mAccel.getAccel(i).y * scaleY);
             blue.lineTo(i * scaleX, 375 - mAccel.getAccel(i).z * scaleY);
         }
-        ci::gl::color(1, 0, 0);
-        ci::gl::draw(red);
-        ci::gl::color(0, 1, 0);
-        ci::gl::draw(green);
-        ci::gl::color(0, 0, 1);
-        ci::gl::draw(blue);
+        gl::color(1, 0, 0);
+        gl::draw(red);
+        gl::color(0, 1, 0);
+        gl::draw(green);
+        gl::color(0, 0, 1);
+        gl::draw(blue);
         
         // show pitch and roll extracted from acceleration
         gl::enableDepthRead();
         gl::enableDepthWrite();
         
+        gl::setMatrices(CameraPersp(getWindowWidth(), getWindowHeight(), 45.));
         gl::pushMatrices();{
             gl::translate(getWindowCenter());
-            gl::rotate(Vec3f(mAccel.getPitch(), 0, mAccel.getRoll()));
-            gl::drawColorCube(Vec3f::zero(), Vec3f(150, 50, 80));
+            gl::rotate(mAccel.getPitch(), vec3(1, 0, 0));
+            gl::rotate(mAccel.getRoll(),  vec3(0, 0, 1));
+            gl::drawColorCube(vec3(0.0f), vec3(150, 50, 80));
         }gl::popMatrices();
         
         gl::disableDepthRead();
@@ -101,7 +104,7 @@ void Wax3SampleApp::draw()
         gl::drawStringCentered("Wax3 not found. Check usb port name and receiver ID", getWindowCenter());
     }
     
-    gl::drawString(to_string((int)getAverageFps()), Vec2f(20, 20));
+    gl::drawString(to_string((int)getAverageFps()), vec2(20, 20));
 }
 
 CINDER_APP_NATIVE( Wax3SampleApp, RendererGl )

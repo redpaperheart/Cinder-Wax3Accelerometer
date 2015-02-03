@@ -52,15 +52,15 @@ public:
     int         getNumNewReadings()                 {return mNewReadings;}
     ushort      getId()                             {return mId;}
     
-    Vec3f       getAccel()                          {return mAccels->front();}
-    Vec3f       getAccel(int i)                     {return mAccels->at(i);}
-    Vec3f*      getAccelHistory()                   {return mAccels->linearize();}
+    vec3       getAccel()                          {return mAccels->front();}
+    vec3       getAccel(int i)                     {return mAccels->at(i);}
+    vec3*      getAccelHistory()                   {return mAccels->linearize();}
     float       getAccelMagnitude()                 {return mAccelMags->front();}
     float       getAccelMagnitude(int i)            {return mAccelMags->at(i);}
     float*      getAccelMagHistory()                {return mAccelMags->linearize();}
     CircBuffer  getAccelMagHistoryBuffer()          {return mAccelMags;}
     
-    Vec3f       getMaxAccel()                       {return mMaxAccel;}
+    vec3       getMaxAccel()                       {return mMaxAccel;}
     float       getMaxAccelMagnitude()              {return mMaxAccelMag;}
     int         getHistoryLength()                  {return mAccels->size();}
     
@@ -78,9 +78,9 @@ protected:
     int         mHistoryLength;
     
     boost::circular_buffer<float>* mAccelMags;
-    boost::circular_buffer<Vec3f>* mAccels;
+    boost::circular_buffer<vec3>* mAccels;
     
-    Vec3f       mMaxAccel;
+    vec3       mMaxAccel;
     float       mMaxAccelMag;
     
     AccelDataSource* mDataSource;

@@ -38,11 +38,11 @@ bool Wax3Receiver::hasNewReadings(ushort id)
     return mBuffers.count(id) == 1 && mBuffers.at(id)->isNotEmpty();
 }
 
-Vec3f Wax3Receiver::getNextReading(ushort id)
+vec3 Wax3Receiver::getNextReading(ushort id)
 {
     WaxSample sample;
     mBuffers.at(id)->popBack(&sample);
-    return Vec3f(sample.x/256.0f, sample.y/256.0f, sample.z/256.0f);
+    return vec3(sample.x/256.0f, sample.y/256.0f, sample.z/256.0f);
 }
 
 

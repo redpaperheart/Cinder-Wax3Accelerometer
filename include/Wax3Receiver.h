@@ -88,7 +88,7 @@ public:
     // AccelDataSource protocol
     bool    isConnected()   { return bConnected; }
     bool    hasNewReadings(ushort id);
-    Vec3f   getNextReading(ushort id);
+    vec3   getNextReading(ushort id);
     
 private:
     // input thread parsing

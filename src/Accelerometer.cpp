@@ -37,12 +37,12 @@ Accelerometer::Accelerometer()
     mSmoothFactor = 0.8;
     mNewReadings = 0;
     
-    mMaxAccel = Vec3f::zero();
+    mMaxAccel = vec3(0.0f);
     mMaxAccelMag = 0;
     mHistoryLength = 120;
     
     mDataSource = NULL;
-    mAccels     = new boost::circular_buffer<Vec3f>(mHistoryLength);
+    mAccels     = new boost::circular_buffer<vec3>(mHistoryLength);
     mAccelMags  = new boost::circular_buffer<float>(mHistoryLength);
 }
 
@@ -72,7 +72,7 @@ void Accelerometer::update()
             mNewReadings ++;
             
             // Update accel buffer
-            Vec3f newAccel = mDataSource->getNextReading(mId);
+            vec3 newAccel = mDataSource->getNextReading(mId);
             
             if(mSmooth && !mAccels->empty()){
                 newAccel = newAccel * mSmoothFactor + (1 - mSmoothFactor) * mAccels->front();
@@ -95,13 +95,13 @@ void Accelerometer::update()
 
 float Accelerometer::getPitch()
 {
-    Vec3f acc = getAccel();
-    return (atan2(acc.x, sqrt(acc.y*acc.y + acc.z*acc.z))*180.0)/M_PI;
+    vec3 acc = getAccel();
+    return atan2(acc.x, sqrt(acc.y*acc.y + acc.z*acc.z));
 }
 
 float Accelerometer::getRoll()
 {
-    Vec3f acc = getAccel();
-    return (atan2(-acc.y, acc.z)*180.0)/M_PI;
+    vec3 acc = getAccel();
+    return atan2(-acc.y, acc.z);
 }
 

@@ -42,5 +42,5 @@ class AccelDataSource{
 public:
     virtual bool  isConnected() = 0;
     virtual bool  hasNewReadings(ushort id) = 0;
-    virtual Vec3f getNextReading(ushort id) = 0;
+    virtual vec3 getNextReading(ushort id) = 0;
 };
