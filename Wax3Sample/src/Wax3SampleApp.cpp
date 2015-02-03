@@ -37,6 +37,10 @@ void Wax3SampleApp::setup()
 
 void Wax3SampleApp::update()
 {
+    // Update the receiver to get the data
+    // (we only need this if we tell it to not be threaded)
+    mWax3.update();
+    
     // Update the accelerometer to obtain new data from its source
     mAccel.update();
     

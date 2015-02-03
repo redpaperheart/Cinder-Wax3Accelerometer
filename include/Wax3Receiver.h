@@ -79,9 +79,11 @@ public:
     ~Wax3Receiver();
     
     // Start and stop
-    bool    setup(string portName);
+    bool    setup(string portName, bool threaded = false);
     bool    stop();
-    void    setDebug(bool b) { bDebug = b; }
+    int     update();  // only call if we don't want it threaded
+    void    setDebug(bool b)            { bDebug = b; }
+    void    setThreaded(bool t)         { bThreaded = t; }
     
     // AccelDataSource protocol
     bool    isConnected()   { return bConnected; }
@@ -90,7 +92,8 @@ public:
     
 private:
     // input thread parsing
-    int                 readPackets();
+    int                 readPacketsThread();
+    int                 readPackets(char *inBuffer);
     size_t              slipread(void *inBuffer, size_t len);
     size_t              lineread(void *inBuffer, size_t len);
     WaxPacket*          parseWaxPacket(const void *inputBuffer, size_t len, unsigned long long now);
@@ -102,11 +105,14 @@ private:
     unsigned long long  ticksNow();
     
     // members
+    bool                bThreaded;
     bool                bConnected;
     bool                bCloseThread;
     bool                bDebug;
     Serial              mSerial;
     shared_ptr<thread>  mThread;
+    char                mBuffer[BUFFER_SIZE];
+
     
     map<ushort, ConcurrentCircularBuffer<WaxSample>* > mBuffers;
 };

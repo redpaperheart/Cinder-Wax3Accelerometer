@@ -55,6 +55,7 @@ Wax3Receiver::Wax3Receiver()
     bConnected = false;
     bCloseThread = false;
     bDebug = false;
+    bThreaded = true;
 }
 
 Wax3Receiver::Wax3Receiver(std::string portName) : Wax3Receiver()
@@ -86,9 +87,10 @@ bool Wax3Receiver::closeThread()
     return false;
 }
 
-bool Wax3Receiver::setup(string portName)
+bool Wax3Receiver::setup(string portName, bool threaded)
 {
     bConnected = false;
+    bThreaded = threaded;
     
     for( auto device : Serial::getDevices()) app::console() << device.getName() << ", " << device.getPath() << std::endl;
     try {
@@ -103,8 +105,10 @@ bool Wax3Receiver::setup(string portName)
     }
     
     /* Start Input thread */
-    closeThread();
-    mThread = shared_ptr<thread>( new thread( bind( &Wax3Receiver::readPackets, this ) ) );
+    if (bThreaded) {
+        closeThread();
+        mThread = shared_ptr<thread>( new thread( bind( &Wax3Receiver::readPacketsThread, this ) ) );
+    }
     bConnected = true;
     return true;
 }
@@ -113,56 +117,66 @@ bool Wax3Receiver::setup(string portName)
 #pragma mark input thread
 /* -------------------------------------------------------------------------------------------------- */
 
-int Wax3Receiver::readPackets()
+int Wax3Receiver::update()
+{
+    if (!bThreaded) return readPackets(mBuffer);
+    else return 1;
+}
+
+int Wax3Receiver::readPacketsThread()
 {
     ci::ThreadSetup threadSetup;
     bCloseThread = false;
-    
-    static char buffer[BUFFER_SIZE];
-    
-    /* Read packets */
-    
+        
     while (!bCloseThread)
     {
-        if(mSerial.getNumBytesAvailable() > 0)
+        int result = readPackets(mBuffer);
+        if (result == -1) break;            // close thread
+//        else if (result == 1);            // good
+        else if (result == 0)               // no packets read
+            std::this_thread::sleep_for(std::chrono::milliseconds(10)); // need this or cpu consumption goes up to 115%
+    }
+    return 1;
+}
+
+int Wax3Receiver::readPackets(char* buffer)
+{
+    if(mSerial.getNumBytesAvailable() > 0)
+    {
+        /* Read data */
+        size_t bytesRead = lineread(buffer, BUFFER_SIZE);
+        
+        if (bytesRead == (size_t) - 1)
         {
-            /* Read data */
-            size_t bytesRead = lineread(buffer, BUFFER_SIZE);
-            
-            if (bytesRead == (size_t) - 1)
+            bytesRead = slipread(buffer, BUFFER_SIZE);
+        }
+        if (bytesRead == 0) { return -1; }
+        
+        
+        // Get time now
+        unsigned long long now = ticksNow();
+        
+        // If it appears to be a binary WAX packet...
+        if (bytesRead > 1 && buffer[0] == 0x12 && (buffer[1] == 0x78 || buffer[1] == 0x58))
+        {
+            WaxPacket *waxPacket = parseWaxPacket(buffer, bytesRead, now);
+            if (waxPacket != NULL)
             {
-                bytesRead = slipread(buffer, BUFFER_SIZE);
-            }
-            if (bytesRead == 0) { break; }
-            
-            
-            // Get time now
-            unsigned long long now = ticksNow();
-            
-            // If it appears to be a binary WAX packet...
-            if (bytesRead > 1 && buffer[0] == 0x12 && (buffer[1] == 0x78 || buffer[1] == 0x58))
-            {
-                WaxPacket *waxPacket = parseWaxPacket(buffer, bytesRead, now);
-                if (waxPacket != NULL)
+                if(bDebug) printWax(waxPacket, 1);
+                
+                // Save samples in concurrent buffer
+                for (int i = 0; i < waxPacket->sampleCount; i++)
                 {
-                    if(bDebug) printWax(waxPacket, 1);
-                    
-                    // Save samples in concurrent buffer
-                    for (int i = 0; i < waxPacket->sampleCount; i++)
-                    {
-                        if(mBuffers.count(waxPacket->deviceId) == 0){ // can't we do this automatically? maybe with default allocator?
-                            mBuffers[waxPacket->deviceId] = new ConcurrentCircularBuffer<WaxSample>( 50 );
-                        }
-                        mBuffers.at(waxPacket->deviceId)->tryPushFront(waxPacket->samples[i]);
+                    if(mBuffers.count(waxPacket->deviceId) == 0){ // can't we do this automatically? maybe with default allocator?
+                        mBuffers[waxPacket->deviceId] = new ConcurrentCircularBuffer<WaxSample>( 50 );
                     }
+                    mBuffers.at(waxPacket->deviceId)->tryPushFront(waxPacket->samples[i]);
                 }
             }
         }
-        else {
-            std::this_thread::sleep_for(std::chrono::milliseconds(10)); // need this or cpu consumption goes up to 115%
-        }
+        return 1;
     }
-    return 1;
+    return 0;
 }
 
 /* -------------------------------------------------------------------------------------------------- */
